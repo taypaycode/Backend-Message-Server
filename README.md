@@ -5,7 +5,7 @@ A simple Express.js backend server that provides message storage and retrieval f
 ## Features
 
 - RESTful API endpoints for message management
-- MongoDB integration for data storage
+- MongoDB Atlas integration for cloud-based data storage
 - JWT-based authentication for protected routes
 - File upload capabilities using Multer
 - Form validation using Express Validator
@@ -16,11 +16,12 @@ A simple Express.js backend server that provides message storage and retrieval f
 
 - Node.js
 - Express.js
-- MongoDB (with Mongoose)
+- MongoDB Atlas (cloud-hosted MongoDB)
 - JWT for authentication
 - Multer for file uploads
 - Winston for logging
 - Express Validator for form validation
+- dotenv for environment variables
 
 ## Installation
 
@@ -35,7 +36,19 @@ A simple Express.js backend server that provides message storage and retrieval f
    npm install
    ```
 
-3. Make sure MongoDB is running locally on port 27017.
+3. Set up MongoDB Atlas:
+   - Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register)
+   - Set up a new cluster
+   - Create a database user with password
+   - Get your connection string
+   - Copy `.env.example` to a new file called `.env`
+   - Update the `.env` file with your MongoDB Atlas connection details:
+     ```
+     MONGODB_URI=mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER-URL>/messageDB?retryWrites=true&w=majority
+     ```
+   - Replace `<USERNAME>`, `<PASSWORD>`, and `<CLUSTER-URL>` with your actual values
+   
+   > **Important**: Never commit your `.env` file to version control. It is already added to `.gitignore` to prevent accidental commits.
 
 4. Start the server:
    ```
