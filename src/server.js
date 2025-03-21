@@ -84,8 +84,19 @@ if (!fs.existsSync('./logs')) {
 const app = express();
 const port = 3000;
 
-// Enable JSON body parsing middleware
-app.use(express.json());
+// Enable JSON body parsing middleware with debug logging
+app.use(express.json({
+  verify: (req, res, buf, encoding) => {
+    try {
+      // Just check if it's parseable (this is what express.json does internally)
+      JSON.parse(buf.toString());
+      console.log('Successfully parsed JSON body');
+    } catch (e) {
+      console.error('ERROR parsing JSON body:', e.message);
+      console.log('Raw body:', buf.toString().substring(0, 200) + '...');
+    }
+  }
+}));
 
 // Single middleware setup for static files
 app.use(express.static('public'));
@@ -93,6 +104,38 @@ app.use(express.static('public'));
 // First API endpoint
 app.get('/api/hello', (req, res) => {
     res.json({ message: 'Hello from the backend!' });
+});
+
+// Debug route to test API connectivity
+app.get('/api/debug', (req, res) => {
+    res.json({
+        message: 'Debug route is working',
+        routes: {
+            auth: {
+                register: '/api/auth/register (POST)',
+                login: '/api/auth/login (POST)'
+            },
+            messages: '/api/messages (GET/POST)',
+            images: '/api/images (GET)',
+            uploads: '/api/images/upload (POST)'
+        },
+        serverInfo: {
+            time: new Date().toISOString(),
+            node: process.version,
+            mongoConnected: mongoose.connection.readyState === 1
+        }
+    });
+});
+
+// Simple test route for auth
+app.get('/api/auth/test', (req, res) => {
+    res.json({
+        message: 'Auth routes are accessible',
+        authRoutes: {
+            register: '/api/auth/register (POST)',
+            login: '/api/auth/login (POST)'
+        }
+    });
 });
 
 // Second API endpoint - both endpoints on the same app instance
@@ -218,9 +261,15 @@ app.post('/api/auth/register', [
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
   try {
+    // Debug logging
+    console.log('Register request received:');
+    console.log('- Headers:', req.headers);
+    console.log('- Body:', req.body);
+    
     // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
     
@@ -229,6 +278,7 @@ app.post('/api/auth/register', [
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
+      console.log('User already exists:', email);
       return res.status(400).json({ error: 'User with this email or username already exists' });
     }
     
@@ -247,6 +297,7 @@ app.post('/api/auth/register', [
     
     // Log successful registration
     logger.info(`New user registered: ${username} (${email})`);
+    console.log(`User registered successfully: ${username} (${email})`);
     
     // Return token
     res.status(201).json({
@@ -261,6 +312,7 @@ app.post('/api/auth/register', [
     });
   } catch (error) {
     logger.error('Registration error:', error);
+    console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -271,9 +323,15 @@ app.post('/api/auth/login', [
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
   try {
+    // Debug logging
+    console.log('Login request received:');
+    console.log('- Headers:', req.headers);
+    console.log('- Body:', req.body);
+    
     // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
     
@@ -282,6 +340,7 @@ app.post('/api/auth/login', [
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
+      console.log('User not found:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -289,6 +348,7 @@ app.post('/api/auth/login', [
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       // Log failed login attempt
+      console.log('Password mismatch for:', email);
       logger.warn(`Failed login attempt for user: ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -298,6 +358,7 @@ app.post('/api/auth/login', [
     
     // Log successful login
     logger.info(`User logged in: ${user.username} (${user.email})`);
+    console.log(`User logged in successfully: ${user.username} (${user.email})`);
     
     // Return token
     res.json({
@@ -312,6 +373,7 @@ app.post('/api/auth/login', [
     });
   } catch (error) {
     logger.error('Login error:', error);
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -382,8 +444,37 @@ const imageSchema = new mongoose.Schema({
 
 const Image = mongoose.model('Image', imageSchema);
 
-// Enhanced file upload route - requires authentication
-app.post('/api/upload', authMiddleware, upload.single('image'), async (req, res) => {
+// Route to get a single image by ID
+app.get('/api/images/:id', async (req, res) => {
+  try {
+    const image = await Image.findById(req.params.id);
+    
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    // Get host info for constructing full URL
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const fullUrl = `${protocol}://${host}`;
+    
+    res.json({
+      id: image._id,
+      filename: image.filename,
+      originalName: image.originalName,
+      url: `${fullUrl}${image.path}`,
+      size: image.size,
+      uploadedAt: image.uploadedAt,
+      userId: image.userId
+    });
+  } catch (error) {
+    logger.error('Error fetching image:', error);
+    res.status(500).json({ error: 'Failed to fetch image' });
+  }
+});
+
+// Route for image upload - Make sure the route name matches the frontend
+app.post('/api/images/upload', authMiddleware, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Please upload an image file' });
@@ -459,37 +550,49 @@ app.get('/api/images', authMiddleware, async (req, res) => {
   }
 });
 
-// Route to get a single image by ID
-app.get('/api/images/:id', async (req, res) => {
-  try {
-    const image = await Image.findById(req.params.id);
-    
-    if (!image) {
-      return res.status(404).json({ error: 'Image not found' });
-    }
-    
-    // Get host info for constructing full URL
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const fullUrl = `${protocol}://${host}`;
-    
-    res.json({
-      id: image._id,
-      filename: image.filename,
-      originalName: image.originalName,
-      url: `${fullUrl}${image.path}`,
-      size: image.size,
-      uploadedAt: image.uploadedAt,
-      userId: image.userId
-    });
-  } catch (error) {
-    logger.error('Error fetching image:', error);
-    res.status(500).json({ error: 'Failed to fetch image' });
-  }
-});
-
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Add logs API endpoint
+app.get('/api/logs', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    // Determine which log file to read based on level
+    const level = req.query.level || 'all';
+    let logFile = 'logs/combined.log';
+    
+    if (level === 'error') {
+      logFile = 'logs/error.log';
+    }
+    
+    // Check if log file exists
+    if (!fs.existsSync(logFile)) {
+      return res.status(404).json({ error: 'Log file not found' });
+    }
+    
+    // Read the log file
+    const fileContent = fs.readFileSync(logFile, 'utf8');
+    
+    // Parse log entries
+    const logs = fileContent
+      .split('\n')
+      .filter(line => line.trim() !== '')
+      .map(line => {
+        try {
+          return JSON.parse(line);
+        } catch (e) {
+          return { level: 'unknown', message: line, timestamp: new Date() };
+        }
+      })
+      .filter(log => level === 'all' || log.level === level)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 100); // Limit to last 100 logs
+    
+    res.json(logs);
+  } catch (error) {
+    logger.error('Error fetching logs:', error);
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
 
 // Request Logger Middleware
 app.use((req, res, next) => {

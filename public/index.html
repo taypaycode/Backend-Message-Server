@@ -3,29 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Backend Project</title>
+    <title>Backend Message Server Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to Backend Development</h1>
-        <div class="message-input">
-            <input type="text" id="messageInput" placeholder="Enter your message">
-            <button id="sendMessage">Send Message</button>
+    <div class="app-wrapper">
+        <!-- Authentication Section -->
+        <div id="auth-section" class="section active">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="login">Login</button>
+                <button class="tab-btn" data-tab="register">Register</button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="login-form" class="tab-content active">
+                <h2>Login to Your Account</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" placeholder="Your password">
+                    </div>
+                    <button type="submit" id="login-btn" class="primary-btn">Login</button>
+                    <div id="login-error" class="error-message"></div>
+                </form>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="register-form" class="tab-content">
+                <h2>Create New Account</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="registerUsername">Username</label>
+                        <input type="text" id="registerUsername" placeholder="Choose a username">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" placeholder="Choose a password (min 6 characters)">
+                    </div>
+                    <button type="submit" id="register-btn" class="primary-btn">Register</button>
+                    <div id="register-error" class="error-message"></div>
+                </form>
+            </div>
         </div>
-        <div class="messages">
-            <h2>Messages</h2>
-            <ul id="messageList">
-                <!-- Messages will be loaded here by script.js -->
-            </ul>
+
+        <!-- Main Dashboard (shown after login) -->
+        <div id="dashboard-section" class="section">
+            <header class="dashboard-header">
+                <h1>Backend Message Server</h1>
+                <div class="user-info">
+                    <span id="username">User</span>
+                    <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </div>
+            </header>
+            
+            <div class="dashboard-tabs">
+                <button class="dashboard-tab active" data-section="messages-section">Messages</button>
+                <button class="dashboard-tab" data-section="images-section">Images</button>
+                <button class="dashboard-tab" data-section="api-section">API Test</button>
+                <button class="dashboard-tab" data-section="logs-section">Logs</button>
+            </div>
+            
+            <!-- Messages Section -->
+            <div id="messages-section" class="dashboard-content active">
+                <h2>Messages</h2>
+                <div class="message-input">
+                    <input type="text" id="messageInput" placeholder="Enter your message">
+                    <button id="sendMessage" class="action-btn">Send Message</button>
+                </div>
+                <div class="messages-container">
+                    <ul id="messageList">
+                        <!-- Messages will be loaded here by script.js -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Images Section -->
+            <div id="images-section" class="dashboard-content">
+                <h2>Image Upload</h2>
+                <div class="upload-container">
+                    <form id="upload-form">
+                        <div class="form-group">
+                            <label for="imageFile">Select Image</label>
+                            <input type="file" id="imageFile" accept="image/*">
+                        </div>
+                        <button type="submit" id="uploadImage" class="action-btn">Upload Image</button>
+                    </form>
+                    <div id="upload-progress"></div>
+                    <div id="upload-error" class="error-message"></div>
+                </div>
+                
+                <h3>Your Images</h3>
+                <div class="images-gallery" id="images-gallery">
+                    <!-- Images will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- API Test Section -->
+            <div id="api-section" class="dashboard-content">
+                <h2>API Endpoints Test</h2>
+                <div class="api-cards">
+                    <div class="api-card">
+                        <h3>Public Endpoints</h3>
+                        <button id="getMessage" class="api-btn">GET /api/hello</button>
+                        <button id="getMessage2" class="api-btn">GET /api/hello2</button>
+                        <button id="getMessage3" class="api-btn">GET /api/hello3</button>
+                        <div class="api-response" id="public-response"></div>
+                    </div>
+                    
+                    <div class="api-card">
+                        <h3>Protected Endpoints</h3>
+                        <button id="getProtected" class="api-btn">GET /api/protected</button>
+                        <button id="getAdmin" class="api-btn">GET /api/admin</button>
+                        <button id="getMe" class="api-btn">GET /api/auth/me</button>
+                        <div class="api-response" id="protected-response"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Logs Section -->
+            <div id="logs-section" class="dashboard-content">
+                <h2>System Logs</h2>
+                <div class="logs-container">
+                    <div class="log-controls">
+                        <button id="refreshLogs" class="action-btn">Refresh Logs</button>
+                        <select id="logLevel">
+                            <option value="all">All Logs</option>
+                            <option value="info">Info</option>
+                            <option value="error">Errors</option>
+                        </select>
+                    </div>
+                    <div class="log-entries" id="log-entries">
+                        <div class="log-placeholder">Logs will appear here after actions are performed.</div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <button id="getMessage">Get Message from Backend</button>
-        <button id="getMessage2">Get Message from Backend2</button>
-        <button id="getMessage3">Get Message from Backend3</button>
-        <p id="message"></p>
-        <p id="message2"></p>
-        <h2 id="message3"></h2>
     </div>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+    
     <script src="script.js"></script>
 </body>
 </html> 
